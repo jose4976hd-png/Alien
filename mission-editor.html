@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ALIEN: SIGNAL LOST — Mission Editor</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --green: #00ff88;
+    --green-dim: #00cc66;
+    --green-dark: #003322;
+    --amber: #ffaa00;
+    --red: #ff3333;
+    --bg: #050f0a;
+    --panel: #070f0b;
+    --border: #1a3326;
+    --border-bright: #00ff8844;
+    --text: #a0ffcc;
+    --text-dim: #4a8866;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border-bright);
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    position: relative;
+  }
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--green), transparent);
+    animation: scanH 3s linear infinite;
+  }
+  @keyframes scanH { 0%{opacity:0.3} 50%{opacity:1} 100%{opacity:0.3} }
+
+  .logo {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    color: var(--green);
+    text-shadow: 0 0 20px var(--green);
+  }
+  .logo span { color: var(--amber); }
+
+  .status-bar {
+    display: flex;
+    gap: 20px;
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+  .status-bar .blink { animation: blink 1.2s step-end infinite; }
+  @keyframes blink { 50%{opacity:0} }
+  .status-bar .active { color: var(--green); }
+
+  .header-actions { display: flex; gap: 8px; }
+
+  /* MAIN LAYOUT */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* LEFT TOOLBAR */
+  .toolbar {
+    width: 64px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 0;
+    gap: 4px;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+
+  .tool-sep {
+    width: 40px;
+    height: 1px;
+    background: var(--border);
+    margin: 6px 0;
+  }
+
+  .tool-label {
+    font-size: 7px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 2px 0;
+  }
+
+  .tool-btn {
+    width: 44px;
+    height: 44px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dim);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: 18px;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .tool-btn:hover {
+    border-color: var(--green-dim);
+    color: var(--green);
+    background: #00ff8808;
+  }
+  .tool-btn.active {
+    border-color: var(--green);
+    color: var(--green);
+    background: #00ff8815;
+    box-shadow: 0 0 10px #00ff8822, inset 0 0 10px #00ff8808;
+  }
+  .tool-btn .tool-name {
+    font-size: 6px;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 0.5px;
+    line-height: 1;
+  }
+
+  /* MAP */
+  #map {
+    flex: 1;
+    cursor: crosshair;
+    position: relative;
+  }
+  #map.cursor-default { cursor: default; }
+
+  /* Scanline overlay sobre el mapa */
+  #map::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,255,136,0.015) 2px,
+      rgba(0,255,136,0.015) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* RIGHT PANEL */
+  .panel {
+    width: 300px;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--green-dim);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-header::before {
+    content: '▶';
+    color: var(--green);
+    font-size: 8px;
+  }
+
+  .panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+  }
+  .panel-body::-webkit-scrollbar { width: 4px; }
+  .panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* FORM ELEMENTS */
+  .field-group { margin-bottom: 14px; }
+  .field-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    display: block;
+  }
+
+  input[type="text"], input[type="number"], select, textarea {
+    width: 100%;
+    background: #0a1a12;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    padding: 6px 8px;
+    border-radius: 2px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--green-dim);
+    box-shadow: 0 0 8px #00ff8820;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  select option { background: #0a1a12; }
+
+  .radio-group { display: flex; flex-direction: column; gap: 4px; }
+  .radio-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 2px;
+    transition: background 0.1s;
+  }
+  .radio-row:hover { background: #00ff8808; }
+  .radio-row input[type="radio"] { accent-color: var(--green); }
+  .radio-row label { font-size: 11px; cursor: pointer; }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+  }
+  .checkbox-row input[type="checkbox"] { accent-color: var(--green); }
+  .checkbox-row label { font-size: 11px; cursor: pointer; }
+
+  .range-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  input[type="range"] {
+    flex: 1;
+    accent-color: var(--green);
+    padding: 0;
+    border: none;
+    background: transparent;
+  }
+  .range-val {
+    font-size: 12px;
+    color: var(--green);
+    min-width: 40px;
+    text-align: right;
+  }
+
+  /* BUTTONS */
+  .btn {
+    padding: 7px 14px;
+    border-radius: 2px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    border: 1px solid;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+  .btn-primary {
+    background: #00ff8820;
+    border-color: var(--green);
+    color: var(--green);
+  }
+  .btn-primary:hover {
+    background: #00ff8840;
+    box-shadow: 0 0 12px #00ff8840;
+  }
+  .btn-danger {
+    background: #ff333310;
+    border-color: var(--red);
+    color: var(--red);
+  }
+  .btn-danger:hover { background: #ff333325; }
+  .btn-amber {
+    background: #ffaa0010;
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+  .btn-amber:hover { background: #ffaa0025; box-shadow: 0 0 12px #ffaa0030; }
+
+  .btn-row { display: flex; gap: 8px; margin-top: 6px; }
+  .btn-full { width: 100%; justify-content: center; }
+
+  /* ELEMENT LIST */
+  .element-list { display: flex; flex-direction: column; gap: 4px; }
+  .element-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.1s;
+    font-size: 11px;
+  }
+  .element-item:hover {
+    border-color: var(--green-dim);
+    background: #00ff8808;
+  }
+  .element-item.selected {
+    border-color: var(--green);
+    background: #00ff8812;
+  }
+  .element-item .el-icon { font-size: 16px; flex-shrink: 0; }
+  .element-item .el-info { flex: 1; overflow: hidden; }
+  .element-item .el-name { color: var(--text); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .element-item .el-sub { color: var(--text-dim); font-size: 9px; }
+  .element-item .el-del {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px;
+    flex-shrink: 0;
+  }
+  .element-item .el-del:hover { color: var(--red); }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .tab {
+    flex: 1;
+    padding: 8px 4px;
+    text-align: center;
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    font-family: 'Orbitron', sans-serif;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active {
+    color: var(--green);
+    border-bottom-color: var(--green);
+  }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* DIVIDER */
+  .divider {
+    font-size: 8px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 6px 0 4px;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+
+  /* COORDS DISPLAY */
+  .coords-display {
+    font-size: 10px;
+    color: var(--amber);
+    padding: 4px 8px;
+    background: #ffaa0010;
+    border: 1px solid #ffaa0030;
+    border-radius: 2px;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+
+  /* NOTIFICATION */
+  .notif {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #0a1a12;
+    border: 1px solid var(--green);
+    color: var(--green);
+    padding: 8px 20px;
+    font-size: 11px;
+    border-radius: 2px;
+    box-shadow: 0 0 20px #00ff8830;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .notif.show { opacity: 1; }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 10px;
+    padding: 20px;
+    line-height: 1.8;
+  }
+  .empty-state .big { font-size: 28px; margin-bottom: 8px; }
+
+  /* LEAFLET custom markers */
+  .custom-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 2px solid;
+    font-size: 14px;
+    width: 32px;
+    height: 32px;
+    backdrop-filter: blur(4px);
+  }
+
+  /* Coords at bottom of map */
+  #coords-bar {
+    position: absolute;
+    bottom: 0; left: 64px; right: 300px;
+    background: #050f0acc;
+    border-top: 1px solid var(--border);
+    padding: 4px 10px;
+    font-size: 10px;
+    color: var(--text-dim);
+    z-index: 1000;
+    pointer-events: none;
+    display: flex;
+    gap: 20px;
+  }
+  #coords-bar span { color: var(--green-dim); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">ALIEN: <span>SIGNAL</span> LOST // <span>MISSION EDITOR</span> v1.0</div>
+  <div class="status-bar">
+    <div>WEYLAND-YUTANI CORP</div>
+    <div class="active blink">● SISTEMA ACTIVO</div>
+    <div id="clock">--:--:--</div>
+    <div id="elem-count">ELEMENTOS: 0</div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-amber" onclick="loadMission()">⬆ CARGAR</button>
+    <button class="btn btn-primary" onclick="exportMission()">⬇ EXPORTAR JSON</button>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <div class="tool-label">NAV</div>
+    <button class="tool-btn active" id="tool-select" onclick="setTool('select')" title="Seleccionar">
+      <span>↖</span>
+      <span class="tool-name">SELECT</span>
+    </button>
+
+    <div class="tool-sep"></div>
+    <div class="tool-label">MISIÓN</div>
+
+    <button class="tool-btn" id="tool-start" onclick="setTool('start')" title="Punto de inicio">
+      <span>🟢</span>
+      <span class="tool-name">INICIO</span>
+    </button>
+    <button class="tool-btn" id="tool-extraction" onclick="setTool('extraction')" title="Punto de extracción">
+      <span>🔵</span>
+      <span class="tool-name">EXTRAC</span>
+    </button>
+    <button class="tool-btn" id="tool-waypoint" onclick="setTool('waypoint')" title="Waypoint">
+      <span>📍</span>
+      <span class="tool-name">WAYP</span>
+    </button>
+
+    <div class="tool-sep"></div>
+    <div class="tool-label">EVENTOS</div>
+
+    <button class="tool-btn" id="tool-xeno" onclick="setTool('xeno')" title="Xenomorfo">
+      <span>👾</span>
+      <span class="tool-name">XENO</span>
+    </button>
+    <button class="tool-btn" id="tool-energy" onclick="setTool('energy')" title="Punto de energía">
+      <span>⚡</span>
+      <span class="tool-name">ENERG</span>
+    </button>
+    <button class="tool-btn" id="tool-message" onclick="setTool('message')" title="Mensaje de radio">
+      <span>📻</span>
+      <span class="tool-name">RADIO</span>
+    </button>
+    <button class="tool-btn" id="tool-danger" onclick="setTool('danger')" title="Zona de peligro">
+      <span>☢️</span>
+      <span class="tool-name">ZONA</span>
+    </button>
+  </div>
+
+  <!-- MAP -->
+  <div id="map"></div>
+  <div id="coords-bar">
+    <div>LAT: <span id="cb-lat">--</span></div>
+    <div>LNG: <span id="cb-lng">--</span></div>
+    <div>ZOOM: <span id="cb-zoom">--</span></div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="panel">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('config')">CONFIG</div>
+      <div class="tab" onclick="switchTab('elements')">ELEMENTOS</div>
+      <div class="tab" onclick="switchTab('mission')">MISIÓN</div>
+    </div>
+
+    <!-- CONFIG TAB -->
+    <div id="tab-config" class="tab-content active panel-body">
+      <div class="empty-state" id="config-empty">
+        <div class="big">↖</div>
+        <div>Selecciona una herramienta<br>y haz clic en el mapa<br>para colocar elementos</div>
+        <br>
+        <div style="color:var(--green-dim)">O clicka un elemento<br>existente para editarlo</div>
+      </div>
+      <div id="config-form" style="display:none"></div>
+    </div>
+
+    <!-- ELEMENTS TAB -->
+    <div id="tab-elements" class="tab-content panel-body">
+      <div id="elements-list">
+        <div class="empty-state">
+          <div class="big">📡</div>
+          <div>No hay elementos<br>en la misión todavía</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MISSION SETTINGS TAB -->
+    <div id="tab-mission" class="tab-content panel-body">
+      <div class="field-group">
+        <label class="field-label">Nombre de misión</label>
+        <input type="text" id="m-name" value="LV-426 — Sector Gamma" />
+      </div>
+      <div class="field-group">
+        <label class="field-label">Descripción / briefing</label>
+        <textarea id="m-desc">Marines, vuestra señal de distress ha sido localizada. Proceded con cautela.</textarea>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Dificultad</label>
+        <select id="m-diff">
+          <option value="easy">EASY — Principiante</option>
+          <option value="normal" selected>NORMAL — Marines</option>
+          <option value="hard">HARD — Veterano</option>
+          <option value="nightmare">NIGHTMARE — Sin retorno</option>
+        </select>
+      </div>
+
+      <div class="divider">ENERGÍA</div>
+      <div class="field-group">
+        <label class="field-label">Energía inicial (%)</label>
+        <div class="range-row">
+          <input type="range" id="m-energy" min="10" max="100" value="100" oninput="document.getElementById('v-energy').textContent=this.value+'%'">
+          <span class="range-val" id="v-energy">100%</span>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Pérdida por tiempo (%/min)</label>
+        <div class="range-row">
+          <input type="range" id="m-drain-time" min="0" max="5" step="0.1" value="0.5" oninput="document.getElementById('v-drain-time').textContent=this.value+'%'">
+          <span class="range-val" id="v-drain-time">0.5%</span>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Pérdida extra al correr (%/min)</label>
+        <div class="range-row">
+          <input type="range" id="m-drain-run" min="0" max="10" step="0.5" value="2" oninput="document.getElementById('v-drain-run').textContent=this.value+'%'">
+          <span class="range-val" id="v-drain-run">2%</span>
+        </div>
+      </div>
+
+      <div class="divider">MOTION TRACKER</div>
+      <div class="field-group">
+        <label class="field-label">Rango de detección (m)</label>
+        <div class="range-row">
+          <input type="range" id="m-tracker-range" min="10" max="100" value="40" oninput="document.getElementById('v-tracker').textContent=this.value+'m'">
+          <span class="range-val" id="v-tracker">40m</span>
+        </div>
+      </div>
+
+      <div class="divider">CONDICIONES DE FALLO</div>
+      <div class="field-group">
+        <div class="checkbox-row">
+          <input type="checkbox" id="m-fail-energy" checked>
+          <label for="m-fail-energy">Energía llega a 0%</label>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="m-fail-xeno" checked>
+          <label for="m-fail-xeno">Xenomorfo a menos de 5m</label>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="m-fail-time">
+          <label for="m-fail-time">Tiempo límite</label>
+        </div>
+        <div class="field-group" style="margin-top:6px">
+          <label class="field-label">Tiempo límite (minutos)</label>
+          <input type="number" id="m-time-limit" value="45" min="5" max="180">
+        </div>
+      </div>
+
+      <div class="divider">AUDIO AMBIENTE</div>
+      <div class="field-group">
+        <label class="field-label">Volumen ambiente (%)</label>
+        <div class="range-row">
+          <input type="range" id="m-amb-vol" min="0" max="100" value="60" oninput="document.getElementById('v-amb').textContent=this.value+'%'">
+          <span class="range-val" id="v-amb">60%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICATION -->
+<div class="notif" id="notif"></div>
+
+<!-- HIDDEN FILE INPUT -->
+<input type="file" id="file-input" accept=".json" style="display:none" onchange="handleFileLoad(event)">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+let currentTool = 'select';
+let elements = [];
+let selectedId = null;
+let nextId = 1;
+let map;
+
+const TYPES = {
+  start:      { icon: '🟢', color: '#00ff88', label: 'INICIO',     single: true },
+  extraction: { icon: '🔵', color: '#4488ff', label: 'EXTRACCIÓN', single: true },
+  waypoint:   { icon: '📍', color: '#ffaa00', label: 'WAYPOINT',   single: false },
+  xeno:       { icon: '👾', color: '#ff3333', label: 'XENOMORFO',  single: false },
+  energy:     { icon: '⚡', color: '#aaff00', label: 'ENERGÍA',    single: false },
+  message:    { icon: '📻', color: '#aa88ff', label: 'RADIO',      single: false },
+  danger:     { icon: '☢️', color: '#ff6600', label: 'ZONA PELIGRO',single: false },
+};
+
+// ═══════════════════════════════════════════════════════
+// MAP INIT
+// ═══════════════════════════════════════════════════════
+function initMap() {
+  map = L.map('map', {
+    center: [40.416775, -3.703790], // Madrid por defecto
+    zoom: 16,
+    zoomControl: false
+  });
+
+  // Esri satellite — sin API key
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Esri, DigitalGlobe, GeoEye',
+    maxZoom: 20
+  }).addTo(map);
+
+  // Labels sobre satélite
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 20,
+    opacity: 0.7
+  }).addTo(map);
+
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  // Click en mapa
+  map.on('click', onMapClick);
+
+  // Coords bar
+  map.on('mousemove', e => {
+    document.getElementById('cb-lat').textContent = e.latlng.lat.toFixed(6);
+    document.getElementById('cb-lng').textContent = e.latlng.lng.toFixed(6);
+  });
+  map.on('zoomend', () => {
+    document.getElementById('cb-zoom').textContent = map.getZoom();
+  });
+  document.getElementById('cb-zoom').textContent = map.getZoom();
+
+  // Intentar geolocalizar al usuario
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      map.setView([pos.coords.latitude, pos.coords.longitude], 17);
+      showNotif('📡 Ubicación detectada — centrado en tu posición');
+    }, () => {});
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// TOOL SELECTION
+// ═══════════════════════════════════════════════════════
+function setTool(tool) {
+  currentTool = tool;
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tool-' + tool).classList.add('active');
+  map.getContainer().style.cursor = tool === 'select' ? 'default' : 'crosshair';
+  if (tool !== 'select') showNotif(`Herramienta: ${TYPES[tool]?.label || 'SELECT'} — Click en el mapa para colocar`);
+}
+
+// ═══════════════════════════════════════════════════════
+// MAP CLICK → PLACE ELEMENT
+// ═══════════════════════════════════════════════════════
+function onMapClick(e) {
+  if (currentTool === 'select') return;
+
+  const type = currentTool;
+  const cfg = TYPES[type];
+
+  // Verificar si es único
+  if (cfg.single) {
+    const existing = elements.find(el => el.type === type);
+    if (existing) {
+      // Mover en vez de duplicar
+      existing.lat = e.latlng.lat;
+      existing.lng = e.latlng.lng;
+      existing.marker.setLatLng(e.latlng);
+      showNotif(`${cfg.icon} ${cfg.label} movido`);
+      renderElementsList();
+      return;
+    }
+  }
+
+  const id = nextId++;
+  const label = getAutoLabel(type);
+  const el = {
+    id,
+    type,
+    label,
+    lat: e.latlng.lat,
+    lng: e.latlng.lng,
+    marker: null,
+    config: getDefaultConfig(type)
+  };
+
+  el.marker = createMarker(el);
+  elements.push(el);
+
+  renderElementsList();
+  updateElemCount();
+  selectElement(id);
+  showNotif(`${cfg.icon} ${label} colocado`);
+}
+
+function getAutoLabel(type) {
+  const cfg = TYPES[type];
+  if (cfg.single) return cfg.label;
+  const count = elements.filter(e => e.type === type).length + 1;
+  return `${cfg.label} ${count}`;
+}
+
+function getDefaultConfig(type) {
+  const defaults = {
+    start:      { radius: 10, audioMessage: 'Briefing de inicio de misión' },
+    extraction: { radius: 15, audioMessage: 'Punto de extracción localizado' },
+    waypoint:   { radius: 20, order: 1, mandatory: true, audioMessage: '', hint: '' },
+    xeno: {
+      behavior: 'stalk',
+      speedIdle: 1.2, speedAlert: 3.8,
+      detectionHear: 25, detectionSee: 15,
+      triggerRun: true, triggerProximity: true,
+      radius: 30
+    },
+    energy: {
+      energyType: 'energy', energyAmount: 30,
+      radius: 15, singleUse: true, audioMessage: 'Kit de recuperación localizado'
+    },
+    message: {
+      radius: 20, audioMessage: '', singleUse: true, delaySeconds: 2
+    },
+    danger: {
+      radius: 30, energyDrain: 2, audioMessage: ''
+    }
+  };
+  return { ...defaults[type] };
+}
+
+// ═══════════════════════════════════════════════════════
+// MARKERS
+// ═══════════════════════════════════════════════════════
+function createMarker(el) {
+  const cfg = TYPES[el.type];
+  const icon = L.divIcon({
+    className: '',
+    html: `<div class="custom-marker" style="background:${cfg.color}22;border-color:${cfg.color};box-shadow:0 0 10px ${cfg.color}66">${cfg.icon}</div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16]
+  });
+
+  const marker = L.marker([el.lat, el.lng], { icon, draggable: true }).addTo(map);
+  marker.on('click', () => selectElement(el.id));
+  marker.on('dragend', e => {
+    el.lat = e.target.getLatLng().lat;
+    el.lng = e.target.getLatLng().lng;
+    if (selectedId === el.id) updateCoordsDisplay(el);
+  });
+
+  // Radio circle
+  if (el.config.radius) {
+    el.circle = L.circle([el.lat, el.lng], {
+      radius: el.config.radius,
+      color: cfg.color,
+      fillColor: cfg.color,
+      fillOpacity: 0.08,
+      weight: 1,
+      dashArray: '4 4'
+    }).addTo(map);
+
+    marker.on('drag', e => {
+      el.circle.setLatLng(e.target.getLatLng());
+    });
+  }
+
+  return marker;
+}
+
+function updateMarkerCircle(el) {
+  if (el.circle) {
+    el.circle.setRadius(el.config.radius || 0);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// SELECT ELEMENT
+// ═══════════════════════════════════════════════════════
+function selectElement(id) {
+  selectedId = id;
+  const el = elements.find(e => e.id === id);
+  if (!el) return;
+
+  // Highlight en lista
+  document.querySelectorAll('.element-item').forEach(i => i.classList.remove('selected'));
+  const li = document.getElementById('eli-' + id);
+  if (li) li.classList.add('selected');
+
+  // Switch a config tab
+  switchTab('config');
+  renderConfigForm(el);
+  map.panTo([el.lat, el.lng]);
+}
+
+// ═══════════════════════════════════════════════════════
+// CONFIG FORM
+// ═══════════════════════════════════════════════════════
+function renderConfigForm(el) {
+  const cfg = TYPES[el.type];
+  document.getElementById('config-empty').style.display = 'none';
+  const form = document.getElementById('config-form');
+  form.style.display = 'block';
+
+  let html = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+      <span style="font-size:20px">${cfg.icon}</span>
+      <div>
+        <div style="font-family:Orbitron,sans-serif;font-size:9px;color:var(--green);letter-spacing:2px">${cfg.label}</div>
+        <div style="font-size:9px;color:var(--text-dim)">ID #${el.id}</div>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Nombre</label>
+      <input type="text" id="cf-label" value="${el.label}" oninput="updateField('label',this.value)">
+    </div>
+    <div class="coords-display">
+      📡 <span id="cf-lat">${el.lat.toFixed(6)}</span>, <span id="cf-lng">${el.lng.toFixed(6)}</span>
+    </div>
+  `;
+
+  // Campos según tipo
+  if (el.type === 'xeno') {
+    html += renderXenoForm(el.config);
+  } else if (el.type === 'energy') {
+    html += renderEnergyForm(el.config);
+  } else if (el.type === 'message') {
+    html += renderMessageForm(el.config);
+  } else if (el.type === 'waypoint') {
+    html += renderWaypointForm(el.config);
+  } else if (el.type === 'danger') {
+    html += renderDangerForm(el.config);
+  } else {
+    html += renderBasicForm(el.config);
+  }
+
+  html += `
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-danger" onclick="deleteElement(${el.id})">🗑 ELIMINAR</button>
+    </div>
+  `;
+
+  form.innerHTML = html;
+  bindFormEvents(el);
+}
+
+function renderXenoForm(c) {
+  return `
+    <div class="divider">COMPORTAMIENTO</div>
+    <div class="field-group">
+      <div class="radio-group">
+        <label class="radio-row"><input type="radio" name="xb" value="static" ${c.behavior==='static'?'checked':''} onchange="updateConfig('behavior',this.value)"><label>Estático — espera que llegues</label></label>
+        <label class="radio-row"><input type="radio" name="xb" value="patrol" ${c.behavior==='patrol'?'checked':''} onchange="updateConfig('behavior',this.value)"><label>Patrulla — entre dos puntos</label></label>
+        <label class="radio-row"><input type="radio" name="xb" value="stalk" ${c.behavior==='stalk'?'checked':''} onchange="updateConfig('behavior',this.value)"><label>Acecha — se acerca despacio</label></label>
+        <label class="radio-row"><input type="radio" name="xb" value="ambush" ${c.behavior==='ambush'?'checked':''} onchange="updateConfig('behavior',this.value)"><label>Emboscada — quieto → sprint</label></label>
+      </div>
+    </div>
+    <div class="divider">VELOCIDAD</div>
+    <div class="field-group">
+      <label class="field-label">Reposo (m/s)</label>
+      <div class="range-row">
+        <input type="range" min="0.1" max="3" step="0.1" value="${c.speedIdle}" oninput="updateConfig('speedIdle',+this.value);document.getElementById('v-si').textContent=this.value">
+        <span class="range-val" id="v-si">${c.speedIdle}</span>
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Alerta (m/s)</label>
+      <div class="range-row">
+        <input type="range" min="1" max="8" step="0.1" value="${c.speedAlert}" oninput="updateConfig('speedAlert',+this.value);document.getElementById('v-sa').textContent=this.value">
+        <span class="range-val" id="v-sa">${c.speedAlert}</span>
+      </div>
+    </div>
+    <div class="divider">DETECCIÓN</div>
+    <div class="field-group">
+      <label class="field-label">Radio — Te oye (m)</label>
+      <div class="range-row">
+        <input type="range" min="5" max="80" value="${c.detectionHear}" oninput="updateConfig('detectionHear',+this.value);document.getElementById('v-dh').textContent=this.value+'m';updateCircleRadius(+this.value)" >
+        <span class="range-val" id="v-dh">${c.detectionHear}m</span>
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Radio — Te ve (m)</label>
+      <div class="range-row">
+        <input type="range" min="3" max="50" value="${c.detectionSee}" oninput="updateConfig('detectionSee',+this.value);document.getElementById('v-ds').textContent=this.value+'m'">
+        <span class="range-val" id="v-ds">${c.detectionSee}m</span>
+      </div>
+    </div>
+    <div class="divider">LO QUE LO ACTIVA</div>
+    <div class="field-group">
+      <div class="checkbox-row"><input type="checkbox" id="tr1" ${c.triggerRun?'checked':''} onchange="updateConfig('triggerRun',this.checked)"><label for="tr1">Usuario corre (+2 m/s)</label></div>
+      <div class="checkbox-row"><input type="checkbox" id="tr2" ${c.triggerProximity?'checked':''} onchange="updateConfig('triggerProximity',this.checked)"><label for="tr2">Entra en radio de detección</label></div>
+    </div>
+  `;
+}
+
+function renderEnergyForm(c) {
+  return `
+    <div class="divider">TIPO</div>
+    <div class="field-group">
+      <div class="radio-group">
+        <label class="radio-row"><input type="radio" name="et" value="energy" ${c.energyType==='energy'?'checked':''} onchange="updateConfig('energyType',this.value)"><label>⚡ Energía</label></label>
+        <label class="radio-row"><input type="radio" name="et" value="ammo" ${c.energyType==='ammo'?'checked':''} onchange="updateConfig('energyType',this.value)"><label>🔫 Munición</label></label>
+        <label class="radio-row"><input type="radio" name="et" value="kit" ${c.energyType==='kit'?'checked':''} onchange="updateConfig('energyType',this.value)"><label>💉 Kit médico</label></label>
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Energía que restaura (%)</label>
+      <div class="range-row">
+        <input type="range" min="5" max="100" value="${c.energyAmount}" oninput="updateConfig('energyAmount',+this.value);document.getElementById('v-ea').textContent='+'+this.value+'%'">
+        <span class="range-val" id="v-ea">+${c.energyAmount}%</span>
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Radio de activación (m)</label>
+      <div class="range-row">
+        <input type="range" min="3" max="40" value="${c.radius}" oninput="updateConfig('radius',+this.value);updateCircleRadius(+this.value);document.getElementById('v-er').textContent=this.value+'m'">
+        <span class="range-val" id="v-er">${c.radius}m</span>
+      </div>
+    </div>
+    <div class="field-group">
+      <div class="checkbox-row"><input type="checkbox" id="eu1" ${c.singleUse?'checked':''} onchange="updateConfig('singleUse',this.checked)"><label for="eu1">Uso único</label></div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Mensaje de audio al recoger</label>
+      <input type="text" value="${c.audioMessage}" oninput="updateConfig('audioMessage',this.value)">
+    </div>
+  `;
+}
+
+function renderMessageForm(c) {
+  return `
+    <div class="field-group">
+      <label class="field-label">Radio de activación (m)</label>
+      <div class="range-row">
+        <input type="range" min="5" max="60" value="${c.radius}" oninput="updateConfig('radius',+this.value);updateCircleRadius(+this.value);document.getElementById('v-mr').textContent=this.value+'m'">
+        <span class="range-val" id="v-mr">${c.radius}m</span>
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Mensaje de radio (texto a voz)</label>
+      <textarea oninput="updateConfig('audioMessage',this.value)">${c.audioMessage}</textarea>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Delay tras activar (seg)</label>
+      <input type="number" min="0" max="30" value="${c.delaySeconds}" oninput="updateConfig('delaySeconds',+this.value)">
+    </div>
+    <div class="field-group">
+      <div class="checkbox-row"><input type="checkbox" id="ms1" ${c.singleUse?'checked':''} onchange="updateConfig('singleUse',this.checked)"><label for="ms1">Uso único</label></div>
+    </div>
+  `;
+}
+
+function renderWaypointForm(c) {
+  return `
+    <div class="field-group">
+      <label class="field-label">Orden en la misión</label>
+      <input type="number" min="1" max="20" value="${c.order}" oninput="updateConfig('order',+this.value)">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Radio de activación (m)</label>
+      <div class="range-row">
+        <input type="range" min="5" max="50" value="${c.radius||20}" oninput="updateConfig('radius',+this.value);updateCircleRadius(+this.value);document.getElementById('v-wr').textContent=this.value+'m'">
+        <span class="range-val" id="v-wr">${c.radius||20}m</span>
+      </div>
+    </div>
+    <div class="field-group">
+      <div class="checkbox-row"><input type="checkbox" id="wm1" ${c.mandatory?'checked':''} onchange="updateConfig('mandatory',this.checked)"><label for="wm1">Obligatorio (falla si se omite)</label></div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Pista de audio al llegar</label>
+      <textarea oninput="updateConfig('hint',this.value)">${c.hint}</textarea>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Mensaje de confirmación</label>
+      <input type="text" value="${c.audioMessage}" oninput="updateConfig('audioMessage',this.value)">
+    </div>
+  `;
+}
+
+function renderDangerForm(c) {
+  return `
+    <div class="field-group">
+      <label class="field-label">Radio de zona peligrosa (m)</label>
+      <div class="range-row">
+        <input type="range" min="5" max="100" value="${c.radius}" oninput="updateConfig('radius',+this.value);updateCircleRadius(+this.value);document.getElementById('v-dr').textContent=this.value+'m'">
+        <span class="range-val" id="v-dr">${c.radius}m</span>
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Drenaje de energía extra (%/min)</label>
+      <div class="range-row">
+        <input type="range" min="0" max="20" step="0.5" value="${c.energyDrain}" oninput="updateConfig('energyDrain',+this.value);document.getElementById('v-dd').textContent=this.value+'%'">
+        <span class="range-val" id="v-dd">${c.energyDrain}%</span>
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Mensaje de audio al entrar</label>
+      <textarea oninput="updateConfig('audioMessage',this.value)">${c.audioMessage}</textarea>
+    </div>
+  `;
+}
+
+function renderBasicForm(c) {
+  return `
+    <div class="field-group">
+      <label class="field-label">Radio de activación (m)</label>
+      <div class="range-row">
+        <input type="range" min="5" max="50" value="${c.radius||10}" oninput="updateConfig('radius',+this.value);updateCircleRadius(+this.value);document.getElementById('v-br').textContent=this.value+'m'">
+        <span class="range-val" id="v-br">${c.radius||10}m</span>
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Mensaje de audio</label>
+      <textarea oninput="updateConfig('audioMessage',this.value)">${c.audioMessage||''}</textarea>
+    </div>
+  `;
+}
+
+function bindFormEvents(el) {
+  // Nada adicional necesario, todo es inline
+}
+
+function updateField(field, val) {
+  const el = elements.find(e => e.id === selectedId);
+  if (!el) return;
+  el[field] = val;
+  renderElementsList();
+}
+
+function updateConfig(field, val) {
+  const el = elements.find(e => e.id === selectedId);
+  if (!el) return;
+  el.config[field] = val;
+}
+
+function updateCircleRadius(r) {
+  const el = elements.find(e => e.id === selectedId);
+  if (el && el.circle) {
+    el.config.radius = r;
+    el.circle.setRadius(r);
+  }
+}
+
+function updateCoordsDisplay(el) {
+  const latEl = document.getElementById('cf-lat');
+  const lngEl = document.getElementById('cf-lng');
+  if (latEl) latEl.textContent = el.lat.toFixed(6);
+  if (lngEl) lngEl.textContent = el.lng.toFixed(6);
+}
+
+// ═══════════════════════════════════════════════════════
+// DELETE
+// ═══════════════════════════════════════════════════════
+function deleteElement(id) {
+  const idx = elements.findIndex(e => e.id === id);
+  if (idx === -1) return;
+  const el = elements[idx];
+  el.marker.remove();
+  if (el.circle) el.circle.remove();
+  elements.splice(idx, 1);
+  selectedId = null;
+  document.getElementById('config-empty').style.display = 'block';
+  document.getElementById('config-form').style.display = 'none';
+  renderElementsList();
+  updateElemCount();
+  showNotif('🗑 Elemento eliminado');
+}
+
+// ═══════════════════════════════════════════════════════
+// ELEMENTS LIST
+// ═══════════════════════════════════════════════════════
+function renderElementsList() {
+  const container = document.getElementById('elements-list');
+  if (elements.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="big">📡</div><div>No hay elementos<br>en la misión todavía</div></div>`;
+    return;
+  }
+
+  const sorted = [...elements].sort((a, b) => {
+    const order = ['start','extraction','waypoint','xeno','energy','message','danger'];
+    return order.indexOf(a.type) - order.indexOf(b.type);
+  });
+
+  container.innerHTML = `<div class="element-list">` +
+    sorted.map(el => {
+      const cfg = TYPES[el.type];
+      return `
+        <div class="element-item ${selectedId===el.id?'selected':''}" id="eli-${el.id}" onclick="selectElement(${el.id})">
+          <span class="el-icon">${cfg.icon}</span>
+          <div class="el-info">
+            <div class="el-name">${el.label}</div>
+            <div class="el-sub">${el.lat.toFixed(4)}, ${el.lng.toFixed(4)}</div>
+          </div>
+          <button class="el-del" onclick="event.stopPropagation();deleteElement(${el.id})">✕</button>
+        </div>
+      `;
+    }).join('') +
+  `</div>`;
+}
+
+function updateElemCount() {
+  document.getElementById('elem-count').textContent = `ELEMENTOS: ${elements.length}`;
+}
+
+// ═══════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const tabs = ['config','elements','mission'];
+    t.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════
+// EXPORT / IMPORT
+// ═══════════════════════════════════════════════════════
+function exportMission() {
+  const startEl = elements.find(e => e.type === 'start');
+  const extractEl = elements.find(e => e.type === 'extraction');
+
+  if (!startEl) { showNotif('⚠️ Falta el PUNTO DE INICIO', 'error'); return; }
+  if (!extractEl) { showNotif('⚠️ Falta el PUNTO DE EXTRACCIÓN', 'error'); return; }
+
+  const mission = {
+    version: '1.0',
+    meta: {
+      name: document.getElementById('m-name').value,
+      description: document.getElementById('m-desc').value,
+      difficulty: document.getElementById('m-diff').value,
+      created: new Date().toISOString(),
+    },
+    settings: {
+      energyStart: +document.getElementById('m-energy').value,
+      drainPerMin: +document.getElementById('m-drain-time').value,
+      drainRunExtra: +document.getElementById('m-drain-run').value,
+      trackerRange: +document.getElementById('m-tracker-range').value,
+      failOnEnergy: document.getElementById('m-fail-energy').checked,
+      failOnXeno: document.getElementById('m-fail-xeno').checked,
+      failOnTime: document.getElementById('m-fail-time').checked,
+      timeLimit: +document.getElementById('m-time-limit').value,
+      ambientVolume: +document.getElementById('m-amb-vol').value,
+    },
+    elements: elements.map(el => ({
+      id: el.id,
+      type: el.type,
+      label: el.label,
+      lat: el.lat,
+      lng: el.lng,
+      config: el.config
+    }))
+  };
+
+  const blob = new Blob([JSON.stringify(mission, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const safeName = mission.meta.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  a.download = `mission_${safeName}.json`;
+  a.href = url;
+  a.click();
+  URL.revokeObjectURL(url);
+  showNotif(`✅ Misión exportada: ${mission.meta.name}`);
+}
+
+function loadMission() {
+  document.getElementById('file-input').click();
+}
+
+function handleFileLoad(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const mission = JSON.parse(e.target.result);
+      clearAll();
+
+      // Meta
+      if (mission.meta) {
+        document.getElementById('m-name').value = mission.meta.name || '';
+        document.getElementById('m-desc').value = mission.meta.description || '';
+        document.getElementById('m-diff').value = mission.meta.difficulty || 'normal';
+      }
+
+      // Settings
+      if (mission.settings) {
+        const s = mission.settings;
+        document.getElementById('m-energy').value = s.energyStart ?? 100;
+        document.getElementById('v-energy').textContent = (s.energyStart ?? 100) + '%';
+        document.getElementById('m-drain-time').value = s.drainPerMin ?? 0.5;
+        document.getElementById('m-tracker-range').value = s.trackerRange ?? 40;
+        document.getElementById('v-tracker').textContent = (s.trackerRange ?? 40) + 'm';
+      }
+
+      // Elements
+      mission.elements.forEach(data => {
+        const id = data.id;
+        if (id >= nextId) nextId = id + 1;
+        const el = {
+          id,
+          type: data.type,
+          label: data.label,
+          lat: data.lat,
+          lng: data.lng,
+          marker: null,
+          config: data.config
+        };
+        el.marker = createMarker(el);
+        elements.push(el);
+      });
+
+      renderElementsList();
+      updateElemCount();
+
+      // Centrar mapa
+      const startEl = elements.find(e => e.type === 'start');
+      if (startEl) map.setView([startEl.lat, startEl.lng], 17);
+
+      showNotif(`📂 Misión cargada: ${mission.meta?.name || 'Sin nombre'}`);
+    } catch(err) {
+      showNotif('❌ Error al leer el archivo JSON', 'error');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function clearAll() {
+  elements.forEach(el => {
+    el.marker.remove();
+    if (el.circle) el.circle.remove();
+  });
+  elements = [];
+  selectedId = null;
+  nextId = 1;
+  document.getElementById('config-empty').style.display = 'block';
+  document.getElementById('config-form').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════════════════════
+let notifTimeout;
+function showNotif(msg, type = 'ok') {
+  const n = document.getElementById('notif');
+  n.textContent = msg;
+  n.style.borderColor = type === 'error' ? 'var(--red)' : 'var(--green)';
+  n.style.color = type === 'error' ? 'var(--red)' : 'var(--green)';
+  n.classList.add('show');
+  clearTimeout(notifTimeout);
+  notifTimeout = setTimeout(() => n.classList.remove('show'), 2800);
+}
+
+// ═══════════════════════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.getHours().toString().padStart(2,'0') + ':' +
+    now.getMinutes().toString().padStart(2,'0') + ':' +
+    now.getSeconds().toString().padStart(2,'0');
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+initMap();
+</script>
+</body>
+</html>
