@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>ALIEN: SIGNAL LOST</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+:root{--green:#00ff88;--green-dim:#00cc66;--amber:#ffaa00;--red:#ff3333;--red-dim:#cc2222;--blue:#4488ff;--bg:#020c06;--panel:#040e08;--border:#0d2418;--text:#8affc4;--text-dim:#3a6648;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace;height:100dvh;display:flex;flex-direction:column;overflow:hidden;user-select:none;}
+.screen{display:none;flex-direction:column;height:100dvh;}.screen.active{display:flex;}
+#screen-load{align-items:center;justify-content:center;gap:10px;padding:20px;background:radial-gradient(ellipse at center,#051a0d,#020c06 70%);}
+.logo-main{font-family:'Orbitron',sans-serif;font-weight:900;font-size:clamp(24px,7vw,40px);letter-spacing:6px;color:var(--green);text-shadow:0 0 30px var(--green);text-align:center;animation:pglow 2s ease-in-out infinite;}
+@keyframes pglow{0%,100%{text-shadow:0 0 20px var(--green)}50%{text-shadow:0 0 50px var(--green),0 0 80px #00ff8860}}
+.logo-sub{font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:8px;color:var(--amber);text-align:center;}
+.corp{font-size:8px;letter-spacing:3px;color:var(--text-dim);text-align:center;margin-bottom:4px;}
+.mode-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:380px;}
+.mode-btn{padding:10px 6px;background:transparent;border:1px solid var(--border);color:var(--text-dim);font-family:'Share Tech Mono',monospace;font-size:9px;cursor:pointer;border-radius:4px;text-align:center;transition:all .2s;line-height:1.5;}
+.mode-btn:hover,.mode-btn.selected{border-color:var(--green);color:var(--green);background:#00ff8810;}
+.card{width:100%;max-width:380px;border:1px solid var(--border);background:#040e0890;padding:14px;border-radius:4px;}
+.card-title{font-size:8px;letter-spacing:3px;color:var(--text-dim);margin-bottom:10px;font-family:'Orbitron',sans-serif;}
+.btn-main{width:100%;max-width:380px;padding:13px;background:#00ff8815;border:1px solid var(--green);color:var(--green);font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:4px;cursor:pointer;border-radius:4px;transition:all .2s;margin-top:2px;}
+.btn-main:hover{background:#00ff8830;box-shadow:0 0 20px #00ff8840;}.btn-main:disabled{opacity:.4;cursor:not-allowed;}
+.btn-sec{width:100%;max-width:380px;padding:9px;background:transparent;border:1px solid var(--border);color:var(--text-dim);font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;cursor:pointer;border-radius:4px;transition:all .2s;}
+.btn-sec:hover{border-color:var(--amber);color:var(--amber);}
+.osm-st{font-size:9px;color:var(--text-dim);text-align:center;margin-top:4px;min-height:14px;}
+.mprev{display:none;border:1px solid var(--green-dim);border-radius:4px;padding:10px;background:#00ff8808;width:100%;max-width:380px;}
+.mp-name{font-family:'Orbitron',sans-serif;font-size:11px;color:var(--green);margin-bottom:5px;}
+.mp-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;font-size:9px;color:var(--text-dim);}
+.mp-grid span{color:var(--text);}
+
+#screen-calibrate{align-items:center;justify-content:center;padding:20px;gap:14px;background:radial-gradient(ellipse at center,#051a0d,#020c06 70%);}
+.cal-title{font-family:'Orbitron',sans-serif;font-size:12px;letter-spacing:4px;color:var(--amber);text-align:center;}
+.compass-ring{width:150px;height:150px;border-radius:50%;border:2px solid var(--border);position:relative;display:flex;align-items:center;justify-content:center;}
+.compass-ring::before{content:'';position:absolute;inset:8px;border-radius:50%;border:1px solid #00ff8820;}
+.cneedle{width:4px;height:60px;background:linear-gradient(to bottom,var(--red) 50%,var(--green) 50%);border-radius:2px;position:absolute;transform-origin:center bottom;bottom:50%;transition:transform .1s linear;}
+.chdg{font-family:'Orbitron',sans-serif;font-size:24px;color:var(--green);text-shadow:0 0 16px var(--green);position:absolute;}
+.clbl{font-size:8px;color:var(--text-dim);letter-spacing:3px;}
+.cal-instr{font-size:11px;color:var(--text-dim);text-align:center;line-height:1.9;max-width:260px;}
+.cal-bar-out{width:100%;max-width:260px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.cal-bar-in{height:100%;background:var(--green);width:0%;transition:width .3s;box-shadow:0 0 6px var(--green);}
+.cal-st{font-size:9px;color:var(--text-dim);text-align:center;margin-top:4px;min-height:28px;line-height:1.6;}
+.btn-begin{padding:13px 34px;background:#00ff8815;border:1px solid var(--green);color:var(--green);font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:4px;cursor:pointer;border-radius:4px;display:none;}
+.btn-begin.show{display:block;animation:fin .5s;}
+@keyframes fin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.skip-lnk{font-size:9px;color:var(--text-dim);background:none;border:none;cursor:pointer;font-family:'Share Tech Mono',monospace;text-decoration:underline;}
+
+#screen-game{position:relative;background:var(--bg);}
+#screen-game::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,255,136,.012) 3px,rgba(0,255,136,.012) 6px);pointer-events:none;z-index:100;}
+.gtop{padding:9px 13px 5px;border-bottom:1px solid var(--border);flex-shrink:0;position:relative;z-index:10;}
+.gr1{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.mlbl{font-family:'Orbitron',sans-serif;font-size:7px;letter-spacing:2px;color:var(--text-dim);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.gtimer{font-family:'Orbitron',sans-serif;font-size:11px;color:var(--amber);letter-spacing:2px;}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 1.5s step-end infinite;flex-shrink:0;margin:0 5px;}
+@keyframes blink{50%{opacity:0}}
+.ebar-row{display:flex;align-items:center;gap:6px;}
+.ebar-lbl{font-size:7px;letter-spacing:2px;color:var(--text-dim);width:26px;flex-shrink:0;}
+.ebar-out{flex:1;height:7px;background:#0a1a10;border:1px solid var(--border);border-radius:1px;overflow:hidden;}
+.ebar-in{height:100%;background:linear-gradient(90deg,var(--green-dim),var(--green));border-radius:1px;transition:width 1s linear;box-shadow:0 0 5px var(--green);width:100%;}
+.ebar-in.low{background:linear-gradient(90deg,var(--red-dim),var(--red));box-shadow:0 0 5px var(--red);animation:ep .5s ease-in-out infinite;}
+@keyframes ep{50%{opacity:.5}}
+.ebar-val{font-size:9px;color:var(--green);width:32px;text-align:right;flex-shrink:0;}.ebar-val.low{color:var(--red);}
+
+.tsect{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px;position:relative;}
+.twrap{position:relative;width:min(66vw,290px);aspect-ratio:1;}
+.tscreen{width:100%;height:100%;border-radius:50%;background:radial-gradient(circle,#010f06,#00050200 70%);border:2px solid #00ff8830;position:relative;overflow:hidden;box-shadow:0 0 22px #00ff8812,inset 0 0 22px #00050240;}
+.tscreen::before{content:'';position:absolute;inset:0;background:radial-gradient(circle,transparent 24%,#00ff8808 25%,transparent 25%),radial-gradient(circle,transparent 49%,#00ff8808 50%,transparent 50%),radial-gradient(circle,transparent 74%,#00ff8810 75%,transparent 75%);border-radius:50%;}
+.tscreen::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 49.5%,#00ff8808 49.5%,#00ff8808 50.5%,transparent 50.5%),linear-gradient(0deg,transparent 49.5%,#00ff8808 49.5%,#00ff8808 50.5%,transparent 50.5%);}
+.sweep{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 85%,#00ff8818 95%,transparent 100%);animation:sweep 2.5s linear infinite;transform-origin:center;}
+@keyframes sweep{to{transform:rotate(360deg)}}
+.blip{position:absolute;border-radius:50%;transform:translate(-50%,-50%);animation:bf 2.5s ease-out forwards;pointer-events:none;}
+.blip.xeno{width:9px;height:9px;background:var(--red);box-shadow:0 0 8px var(--red),0 0 14px var(--red);}
+.blip.wp{width:8px;height:8px;background:var(--amber);box-shadow:0 0 8px var(--amber);}
+.blip.sup{width:8px;height:8px;background:#aaff00;box-shadow:0 0 8px #aaff00;}
+.blip.player{width:10px;height:10px;background:var(--green);box-shadow:0 0 12px var(--green);animation:none;}
+@keyframes bf{0%{opacity:1}70%{opacity:.8}100%{opacity:0}}
+.tlbl{position:absolute;top:8px;left:50%;transform:translateX(-50%);font-size:7px;letter-spacing:3px;color:#00ff8840;font-family:'Orbitron',sans-serif;white-space:nowrap;}
+.trng{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:7px;color:#00ff8840;white-space:nowrap;}
+.nearest{font-family:'Orbitron',sans-serif;font-size:10px;color:var(--red);text-align:center;margin-top:6px;letter-spacing:2px;min-height:14px;}
+.ibar{display:flex;gap:5px;justify-content:center;margin-top:6px;flex-wrap:wrap;}
+.ichip{padding:3px 7px;border:1px solid var(--border);border-radius:10px;font-size:9px;color:var(--text-dim);display:flex;align-items:center;gap:3px;}
+.ichip.on{border-color:var(--green);color:var(--green);background:#00ff8810;}
+.ichip .icnt{font-family:'Orbitron',sans-serif;font-size:8px;}
+
+.xalert{position:absolute;inset:0;background:#ff000008;border:2px solid var(--red);z-index:50;pointer-events:none;opacity:0;transition:opacity .3s;}
+.xalert.show{opacity:1;}
+
+.jprompt{position:absolute;bottom:55px;left:50%;transform:translateX(-50%);background:#020c06ee;border:1px solid var(--amber);border-radius:8px;padding:11px 14px;z-index:200;text-align:center;font-size:10px;color:var(--text);line-height:1.9;max-width:92%;display:none;}
+.jprompt.show{display:block;animation:fin .3s;}
+.jp-ttl{font-family:'Orbitron',sans-serif;font-size:8px;color:var(--amber);letter-spacing:2px;margin-bottom:4px;}
+.jdots{display:flex;gap:5px;justify-content:center;margin-top:6px;}
+.jdot{width:11px;height:11px;border-radius:50%;border:1px solid var(--border);}
+.jdot.on{background:var(--amber);border-color:var(--amber);box-shadow:0 0 7px var(--amber);}
+
+.srow{padding:5px 13px;border-top:1px solid var(--border);font-size:9px;color:var(--text-dim);text-align:center;flex-shrink:0;min-height:26px;display:flex;align-items:center;justify-content:center;gap:5px;}
+.irow{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;border-top:1px solid var(--border);flex-shrink:0;}
+.icell{padding:5px 8px;background:var(--panel);text-align:center;}
+.ic-l{font-size:6px;letter-spacing:2px;color:var(--text-dim);margin-bottom:2px;}
+.ic-v{font-family:'Orbitron',sans-serif;font-size:10px;color:var(--text);}
+.gbot{padding:7px 13px;border-top:1px solid var(--border);display:flex;justify-content:center;flex-shrink:0;}
+.pbtn{padding:8px 26px;background:transparent;border:1px solid var(--border);color:var(--text-dim);font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:3px;cursor:pointer;border-radius:2px;transition:all .2s;}
+.pbtn:hover{border-color:var(--amber);color:var(--amber);}
+
+#screen-pause{align-items:center;justify-content:center;gap:14px;background:#02080580;backdrop-filter:blur(4px);position:fixed;inset:0;z-index:300;display:none;}
+#screen-pause.active{display:flex;}
+.ptitle{font-family:'Orbitron',sans-serif;font-size:20px;letter-spacing:6px;color:var(--amber);}
+.pmenu{display:flex;flex-direction:column;gap:10px;width:190px;}
+.pmenu button{padding:10px;background:#040e0890;border:1px solid var(--border);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;cursor:pointer;border-radius:2px;transition:all .15s;}
+.pmenu button:hover{border-color:var(--green-dim);color:var(--green);}
+.pmenu button.d{border-color:var(--red);color:var(--red);}
+
+#screen-end{align-items:center;justify-content:center;padding:24px 18px;gap:12px;background:radial-gradient(ellipse at center,#051a0d,#020c06 70%);}
+.eicon{font-size:52px;text-align:center;}
+.etitle{font-family:'Orbitron',sans-serif;font-size:16px;letter-spacing:4px;text-align:center;}
+.etitle.ok{color:var(--green);text-shadow:0 0 18px var(--green);}.etitle.fail{color:var(--red);text-shadow:0 0 18px var(--red);}
+.estats{border:1px solid var(--border);padding:12px 18px;width:100%;max-width:300px;border-radius:4px;}
+.esr{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);font-size:10px;}
+.esr:last-child{border:none;}.esr .l{color:var(--text-dim);}
+.ebtn{padding:10px 26px;background:#00ff8815;border:1px solid var(--green);color:var(--green);font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:3px;cursor:pointer;border-radius:4px;}
+</style>
+</head>
+<body>
+
+<div class="screen active" id="screen-load">
+  <div class="logo-main">ALIEN</div>
+  <div class="logo-sub">SIGNAL LOST</div>
+  <div class="corp">WEYLAND-YUTANI CORPORATION • USCM FIELD OPS v2.0</div>
+  <div style="font-size:8px;letter-spacing:2px;color:var(--text-dim)">MODO DE MISIÓN</div>
+  <div class="mode-row">
+    <div class="mode-btn selected" id="mode-auto" onclick="selectMode('auto')">🌍 AUTO<br><span style="font-size:7px;opacity:.7">Puntos reales OSM<br>Misión generada</span></div>
+    <div class="mode-btn" id="mode-manual" onclick="selectMode('manual')">📁 MANUAL<br><span style="font-size:7px;opacity:.7">Cargar archivo<br>JSON del editor</span></div>
+  </div>
+  <div class="card" id="card-auto">
+    <div class="card-title">▶ MISIÓN AUTOMÁTICA</div>
+    <button class="btn-main" id="btn-osm" onclick="loadOSM()">📡 DETECTAR ZONA Y GENERAR</button>
+    <div class="osm-st" id="osm-st">Esperando...</div>
+  </div>
+  <div class="card" id="card-manual" style="display:none">
+    <div class="card-title">▶ CARGAR MISIÓN JSON</div>
+    <button class="btn-main" onclick="document.getElementById('fi').click()">📁 SELECCIONAR ARCHIVO</button>
+  </div>
+  <div class="mprev" id="mprev">
+    <div class="mp-name" id="pname">—</div>
+    <div class="mp-grid">
+      <div>Tipo: <span id="ptype">—</span></div><div>Objetivos: <span id="pobj">—</span></div>
+      <div>Xenomorfos: <span id="pxeno">—</span></div><div>Suministros: <span id="psup">—</span></div>
+    </div>
+  </div>
+  <button class="btn-main" id="btn-start" style="display:none" onclick="goCalibrate()">▶ INICIAR MISIÓN</button>
+  <button class="btn-sec" onclick="loadDemo()">Cargar DEMO offline</button>
+  <input type="file" id="fi" accept=".json" style="display:none" onchange="handleFile(event)">
+</div>
+
+<div class="screen" id="screen-calibrate">
+  <br>
+  <div class="cal-title">CALIBRACIÓN DE BRÚJULA</div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+    <div class="compass-ring">
+      <div class="cneedle" id="cneedle"></div>
+      <div class="chdg" id="chdg">---</div>
+    </div>
+    <div class="clbl">ORIENTACIÓN ACTUAL</div>
+  </div>
+  <div class="cal-instr"><b>Pon los cascos.</b><br>Gira lentamente 360°<br>para calibrar la brújula.</div>
+  <div style="width:100%;max-width:260px;padding:0 16px">
+    <div class="cal-bar-out"><div class="cal-bar-in" id="cbar"></div></div>
+  </div>
+  <div class="cal-st" id="cst">Esperando movimiento...</div>
+  <button class="btn-begin" id="btn-begin" onclick="startMission()">▶ COMENZAR MISIÓN</button>
+  <button class="skip-lnk" onclick="skipCal()">Omitir calibración</button>
+</div>
+
+<div class="screen" id="screen-game">
+  <div class="xalert" id="xalert"></div>
+  <div class="gtop">
+    <div class="gr1">
+      <div class="mlbl" id="glbl">—</div>
+      <div class="sdot"></div>
+      <div class="gtimer" id="gtimer">00:00</div>
+    </div>
+    <div class="ebar-row">
+      <div class="ebar-lbl">PWR</div>
+      <div class="ebar-out"><div class="ebar-in" id="ebar"></div></div>
+      <div class="ebar-val" id="ebarv">100%</div>
+    </div>
+  </div>
+  <div class="tsect">
+    <div class="twrap">
+      <div class="tscreen" id="tscreen">
+        <div class="sweep"></div>
+        <div class="tlbl">MOTION TRACKER</div>
+        <div class="trng" id="trng">RANGE: 45m</div>
+        <div class="blip player" style="left:50%;top:50%"></div>
+      </div>
+    </div>
+    <div class="nearest" id="nearest"></div>
+    <div class="ibar" id="ibar"></div>
+  </div>
+  <div class="jprompt" id="jprompt">
+    <div class="jp-ttl" id="jttl">⚡ ACCIÓN DISPONIBLE</div>
+    <div id="jtxt">—</div>
+    <div class="jdots" id="jdots"></div>
+  </div>
+  <div class="srow"><span id="sicon">📡</span><span id="stxt">Adquiriendo señal...</span></div>
+  <div class="irow">
+    <div class="icell"><div class="ic-l">HEADING</div><div class="ic-v" id="ihdg">---°</div></div>
+    <div class="icell"><div class="ic-l">VELOCIDAD</div><div class="ic-v" id="ispd">0.0</div></div>
+    <div class="icell"><div class="ic-l">OBJETIVO</div><div class="ic-v" id="iobj">—</div></div>
+  </div>
+  <div class="gbot"><button class="pbtn" onclick="pauseGame()">⏸ PAUSA DE EMERGENCIA</button></div>
+</div>
+
+<div class="screen" id="screen-pause">
+  <div class="ptitle">⏸ PAUSA</div>
+  <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px">MISIÓN EN ESPERA</div>
+  <div class="pmenu">
+    <button onclick="resumeGame()">▶ CONTINUAR</button>
+    <button class="d" onclick="abortMission()">✕ ABANDONAR</button>
+  </div>
+</div>
+
+<div class="screen" id="screen-end">
+  <div class="eicon" id="eicon">🏁</div>
+  <div class="etitle" id="etitle">—</div>
+  <div class="estats" id="estats"></div>
+  <button class="ebtn" onclick="goLoad()">⟵ VOLVER</button>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════
+// AUDIO
+// ═══════════════════════════
+let AC=null,MG=null,tPingIv=null,tPingMs=null;
+
+function initAudio(){
+  if(AC)return;
+  AC=new(window.AudioContext||window.webkitAudioContext)();
+  MG=AC.createGain(); MG.gain.value=0.85; MG.connect(AC.destination);
+  // Ruido ambiente
+  const buf=AC.createBuffer(2,AC.sampleRate*4,AC.sampleRate);
+  for(let c=0;c<2;c++){const d=buf.getChannelData(c);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*0.011;}
+  const src=AC.createBufferSource(); src.buffer=buf; src.loop=true;
+  const f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=260;
+  const g=AC.createGain(); g.gain.value=0.22;
+  src.connect(f); f.connect(g); g.connect(MG); src.start();
+}
+
+function ping(strong=false){
+  if(!AC||!MG)return;
+  const t=AC.currentTime,osc=AC.createOscillator(),env=AC.createGain();
+  osc.type='sine'; osc.frequency.value=strong?1200:900;
+  env.gain.setValueAtTime(0,t);
+  env.gain.linearRampToValueAtTime(strong?.55:.35,t+.01);
+  env.gain.exponentialRampToValueAtTime(.001,t+(strong?.4:.2));
+  osc.connect(env); env.connect(MG); osc.start(t); osc.stop(t+.5);
+}
+
+function setTracker(nearM,range){
+  if(!AC)return;
+  if(nearM===null||nearM>range){if(tPingIv){clearInterval(tPingIv);tPingIv=null;}tPingMs=null;return;}
+  const ratio=Math.max(0,1-nearM/range);
+  const ms=Math.max(180,Math.round(3000-ratio*2820));
+  if(tPingMs&&Math.abs(tPingMs-ms)<80)return;
+  tPingMs=ms; if(tPingIv)clearInterval(tPingIv);
+  firePing(ratio); tPingIv=setInterval(()=>firePing(ratio),ms);
+}
+
+function firePing(r){
+  if(!AC||!MG)return;
+  const t=AC.currentTime,osc=AC.createOscillator(),env=AC.createGain();
+  osc.type='sine'; osc.frequency.value=820+r*580;
+  env.gain.setValueAtTime(0,t);
+  env.gain.linearRampToValueAtTime(.55+r*.35,t+.007);
+  env.gain.exponentialRampToValueAtTime(.001,t+.11);
+  osc.connect(env); env.connect(MG); osc.start(t); osc.stop(t+.14);
+}
+
+function xeno3D(az,dist){
+  if(!AC||!MG)return;
+  const pan=AC.createPannerNode();
+  pan.panningModel='HRTF'; pan.distanceModel='inverse';
+  pan.refDistance=1; pan.maxDistance=80; pan.rolloffFactor=1.2;
+  const rad=az*Math.PI/180;
+  pan.positionX.value=Math.sin(rad)*dist; pan.positionY.value=0; pan.positionZ.value=-Math.cos(rad)*dist;
+  const g=AC.createGain(); g.gain.value=0.6;
+  const osc=AC.createOscillator(),ws=AC.createWaveShaper();
+  const cv=new Float32Array(256);
+  for(let i=0;i<256;i++){const x=(i*2)/256-1;cv[i]=((Math.PI+200)*x)/(Math.PI+200*Math.abs(x));}
+  ws.curve=cv; osc.type='sawtooth'; osc.frequency.value=65+Math.random()*35;
+  osc.connect(ws); ws.connect(pan); pan.connect(g); g.connect(MG);
+  g.gain.setTargetAtTime(0,AC.currentTime+.6,.1); osc.start(); osc.stop(AC.currentTime+1);
+}
+
+const SY=window.speechSynthesis;
+let SQ=[],SP=false;
+function speak(t){SQ.push(t);if(!SP)pSQ();}
+function pSQ(){if(!SQ.length){SP=false;return;}SP=true;const t=SQ.shift();SY.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='es-ES';u.rate=.85;u.pitch=.72;u.volume=.95;u.onend=()=>setTimeout(pSQ,250);u.onerror=()=>setTimeout(pSQ,250);SY.speak(u);}
+
+// ═══════════════════════════
+// STATE
+// ═══════════════════════════
+let mission=null,running=false,paused=false,startTime=null,energy=100;
+let pLat=null,pLng=null,pH=0,pSpd=0;
+let calDone=false,calH=[],oriH=null;
+let els=[],triggered=new Set(),loops=[],lastPos=null,gpsW=null;
+let S={xe:0,pk:0,ms:0,dist:0,items:0};
+let xenoSt={};
+let inv={
+  bengala:   {icon:'🔦',name:'Bengala',   count:2},
+  adrenalina:{icon:'💉',name:'Adrenalina',count:1},
+  inhibidor: {icon:'📡',name:'Inhibidor', count:1},
+  silencio:  {icon:'🔇',name:'Silencio',  count:1},
+  botiquin:  {icon:'🩹',name:'Botiquín',  count:1},
+};
+let effects={};
+let jActive=false,jOpts=[],jCount=0,jTO=null;
+let lastXenoSpk=0,lastNavSpk=0;
+let missionMode='auto';
+
+// ═══════════════════════════
+// UI MODE
+// ═══════════════════════════
+function selectMode(m){
+  missionMode=m;
+  document.getElementById('mode-auto').classList.toggle('selected',m==='auto');
+  document.getElementById('mode-manual').classList.toggle('selected',m==='manual');
+  document.getElementById('card-auto').style.display=m==='auto'?'block':'none';
+  document.getElementById('card-manual').style.display=m==='manual'?'block':'none';
+}
+
+// ═══════════════════════════
+// OSM
+// ═══════════════════════════
+async function loadOSM(){
+  const btn=document.getElementById('btn-osm'),st=document.getElementById('osm-st');
+  btn.disabled=true; st.textContent='📡 Obteniendo posición GPS...';
+  let lat=40.4168,lng=-3.7038;
+  try{const p=await new Promise((r,j)=>navigator.geolocation.getCurrentPosition(r,j,{enableHighAccuracy:true,timeout:8000}));lat=p.coords.latitude;lng=p.coords.longitude;st.textContent=`📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}`;}
+  catch(e){st.textContent='⚠️ Sin GPS — usando Madrid';}
+  st.textContent='🌍 Descargando puntos OSM...';
+  try{
+    const q=`[out:json][timeout:15];(node["amenity"~"^(place_of_worship|pharmacy|bank|post_box|fountain|bench)$"](around:1200,${lat},${lng});node["historic"](around:1200,${lat},${lng});node["tourism"~"^(artwork|monument|attraction)$"](around:1200,${lat},${lng});node["leisure"~"^(park|playground)$"](around:1200,${lat},${lng}););out body;`;
+    const res=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:q,headers:{'Content-Type':'text/plain'}});
+    const data=await res.json();
+    const pts=(data.elements||[]).filter(p=>p.lat&&p.lon);
+    st.textContent=`✅ ${pts.length} puntos — generando misión...`;
+    loadMission(genMission(lat,lng,pts));
+  }catch(e){st.textContent='⚠️ Error OSM — cargando demo';loadMission(makeDemo(lat,lng));}
+  btn.disabled=false;
+}
+
+function genMission(plat,plng,pts){
+  const sorted=pts.map(p=>({...p,d:hav(plat,plng,p.lat,p.lon)})).sort((a,b)=>a.d-b.d);
+  const types=['extraction','circuit','analysis'];
+  const type=types[Math.floor(Math.random()*types.length)];
+  const els=[],names={extraction:'EXTRACCIÓN ALFA',circuit:'CIRCUITO GAMMA',analysis:'ANÁLISIS OMEGA'};
+  let id=1;
+  els.push({id:id++,type:'start',label:'INICIO',lat:plat,lng:plng,config:{radius:10,audioMessage:''}});
+
+  if(type==='circuit'){
+    const tgts=sorted.slice(0,4);
+    tgts.forEach((p,i)=>els.push({id:id++,type:'waypoint',label:`GYM ${i+1}`,lat:p.lat,lng:p.lon,config:{radius:20,order:i+1,mandatory:true,hint:'',audioMessage:`Gimnasio ${i+1} de ${tgts.length} asegurado.`}}));
+    els.push({id:id++,type:'extraction',label:'REGRESO BASE',lat:plat,lng:plng,config:{radius:20,audioMessage:'Circuito completado. Regresa a base.'}});
+  } else {
+    const tgt=sorted[3+Math.floor(Math.random()*3)]||sorted[sorted.length-1];
+    sorted.slice(1,3).forEach((p,i)=>els.push({id:id++,type:'waypoint',label:`WP ${i+1}`,lat:p.lat,lng:p.lon,config:{radius:20,order:i+1,mandatory:true,hint:'',audioMessage:`Waypoint ${i+1} confirmado.`}}));
+    els.push({id:id++,type:'extraction',label:'EXTRACCIÓN',lat:tgt.lat,lng:tgt.lon,config:{radius:18,audioMessage:'Extracción completada. Misión cumplida.'}});
+  }
+
+  sorted.slice(5,8).forEach(p=>els.push({id:id++,type:'energy',label:'SUMINISTROS',lat:p.lat,lng:p.lon,config:{energyType:'kit',energyAmount:25,radius:15,singleUse:true,audioMessage:'Suministros recogidos.'}}));
+
+  const xt=['merodeador','acechador','emboscador','rastreador','centinela'];
+  for(let i=0;i<3;i++){
+    const b=sorted[1+i*2]||sorted[sorted.length-1];
+    const xt2=xt[Math.floor(Math.random()*xt.length)];
+    els.push({id:id++,type:'xeno',label:`XENO-${String.fromCharCode(65+i)}`,
+      lat:b.lat+(Math.random()-.5)*.004,lng:b.lon+(Math.random()-.5)*.004,
+      config:{xenoType:xt2,detectionHear:getD(xt2,'h'),detectionSee:getD(xt2,'s'),speedAlert:getSp(xt2),radius:38}});
+  }
+  if(sorted[9]) els.push({id:id++,type:'message',label:'RADIO',lat:sorted[9].lat,lng:sorted[9].lon,config:{radius:25,audioMessage:'Marines, hay movimiento en el sector. Extremad la precaución.',singleUse:true,delaySeconds:2}});
+
+  return{version:'2.0',meta:{name:names[type]||'MISIÓN AUTO',description:'',difficulty:'normal',missionType:type},
+    settings:{energyStart:100,drainPerMin:.4,drainRunExtra:1.5,trackerRange:45,failOnEnergy:true,failOnXeno:true,failOnTime:false,timeLimit:60},elements:els};
+}
+
+function getD(t,s){return{merodeador:[30,18],acechador:[25,14],emboscador:[10,8],rastreador:[40,22],centinela:[35,25]}[t]?.[s==='h'?0:1]||(s==='h'?25:15);}
+function getSp(t){return{merodeador:3.2,acechador:3.8,emboscador:5.5,rastreador:4.2,centinela:0}[t]||3.5;}
+
+function makeDemo(lat,lng){
+  lat=lat||40.4168;lng=lng||(-3.7038);
+  return{version:'2.0',meta:{name:'DEMO — LV-426',description:'',difficulty:'normal',missionType:'extraction'},
+    settings:{energyStart:100,drainPerMin:.3,drainRunExtra:1,trackerRange:45,failOnEnergy:true,failOnXeno:true,failOnTime:false,timeLimit:60},
+    elements:[
+      {id:1,type:'start',label:'INICIO',lat,lng,config:{radius:10,audioMessage:''}},
+      {id:2,type:'waypoint',label:'WP 1',lat:lat+.0006,lng:lng+.0002,config:{radius:20,order:1,mandatory:true,hint:'Dirígete al norte.',audioMessage:'Waypoint uno confirmado.'}},
+      {id:3,type:'xeno',label:'XENO-A',lat:lat+.0004,lng:lng+.0005,config:{xenoType:'merodeador',detectionHear:30,detectionSee:18,speedAlert:3.2,radius:38}},
+      {id:4,type:'xeno',label:'XENO-B',lat:lat+.001,lng:lng-.0003,config:{xenoType:'acechador',detectionHear:25,detectionSee:14,speedAlert:3.8,radius:38}},
+      {id:5,type:'energy',label:'KIT A',lat:lat+.0003,lng:lng-.0004,config:{energyType:'kit',energyAmount:30,radius:15,singleUse:true,audioMessage:'Kit médico recuperado.'}},
+      {id:6,type:'message',label:'RADIO',lat:lat+.0007,lng:lng-.0001,config:{radius:22,audioMessage:'Marines, hay movimiento en los conductos. Cuidado.',singleUse:true,delaySeconds:2}},
+      {id:7,type:'extraction',label:'EXTRACCIÓN',lat:lat+.0014,lng:lng,config:{radius:18,audioMessage:'Extracción completada. Bien hecho, marine.'}},
+    ]};
+}
+
+function loadDemo(){loadMission(makeDemo());}
+function handleFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{loadMission(JSON.parse(ev.target.result));}catch{alert('JSON inválido.');}};r.readAsText(f);e.target.value='';}
+
+function loadMission(data){
+  mission=data;
+  const xc=data.elements.filter(e=>e.type==='xeno').length;
+  const sc=data.elements.filter(e=>e.type==='energy').length;
+  const oc=data.elements.filter(e=>e.type==='waypoint'||e.type==='extraction').length;
+  document.getElementById('pname').textContent=data.meta?.name||'Sin nombre';
+  document.getElementById('ptype').textContent=(data.meta?.missionType||'—').toUpperCase();
+  document.getElementById('pobj').textContent=oc;
+  document.getElementById('pxeno').textContent=xc;
+  document.getElementById('psup').textContent=sc;
+  document.getElementById('mprev').style.display='block';
+  document.getElementById('btn-start').style.display='block';
+}
+
+// ═══════════════════════════
+// SCREENS
+// ═══════════════════════════
+function showScr(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+id).classList.add('active');}
+function goLoad(){stopGame();showScr('load');}
+function goCalibrate(){initAudio();showScr('calibrate');startCal();}
+
+// ═══════════════════════════
+// COMPASS
+// ═══════════════════════════
+function startCal(){
+  calH=[];calDone=false;
+  document.getElementById('cst').innerHTML='Solicitando permisos...';
+  function onOri(e){
+    let h=null;
+    if(typeof e.webkitCompassHeading==='number'&&e.webkitCompassHeading>=0)h=e.webkitCompassHeading;
+    else if(e.absolute&&e.alpha!=null)h=(360-e.alpha)%360;
+    else if(e.alpha!=null)h=(360-e.alpha)%360;
+    const dg=`α:${e.alpha!=null?Math.round(e.alpha):'NULL'} β:${e.beta!=null?Math.round(e.beta):'NULL'}`;
+    if(h===null){document.getElementById('cst').innerHTML=`⚠️ Sin datos<br><small>${dg}</small>`;return;}
+    if(calH.length>0){let d=h-calH[calH.length-1];if(d>180)d-=360;if(d<-180)d+=360;h=(calH[calH.length-1]+d*.3+360)%360;}
+    pH=h;
+    document.getElementById('cneedle').style.transform=`rotate(${h}deg)`;
+    document.getElementById('chdg').textContent=Math.round(h)+'°';
+    calH.push(h);
+    const bkts=new Set(calH.map(v=>Math.floor(v/10)));
+    const pct=Math.min(100,bkts.size/36*100);
+    document.getElementById('cbar').style.width=pct+'%';
+    document.getElementById('cst').innerHTML=`Cobertura: ${Math.round(pct)}%<br><small style="color:var(--text-dim)">${dg}</small>`;
+    if(pct>=75&&!calDone){calDone=true;document.getElementById('cst').innerHTML=`✅ Calibración OK<br><small style="color:var(--text-dim)">${dg}</small>`;document.getElementById('btn-begin').classList.add('show');ping(true);}
+  }
+  if(oriH){window.removeEventListener('deviceorientation',oriH,true);window.removeEventListener('deviceorientationabsolute',oriH,true);}
+  oriH=onOri;
+  function attach(){
+    window.addEventListener('deviceorientationabsolute',onOri,true);
+    window.addEventListener('deviceorientation',onOri,true);
+    setTimeout(()=>{if(calH.length===0)document.getElementById('cst').innerHTML='⚠️ Sin respuesta<br><small>Mueve el teléfono o usa "Omitir"</small>';},3000);
+  }
+  if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){DeviceOrientationEvent.requestPermission().then(r=>{if(r==='granted')attach();else document.getElementById('cst').innerHTML='❌ Permiso denegado';}).catch(attach);}
+  else attach();
+}
+
+function skipCal(){calDone=true;pH=0;document.getElementById('btn-begin').classList.add('show');document.getElementById('cst').innerHTML='⏩ Calibración omitida';}
+
+// ═══════════════════════════
+// START MISSION
+// ═══════════════════════════
+function startMission(){
+  if(!mission)return;
+  energy=mission.settings?.energyStart??100;
+  startTime=Date.now();running=true;paused=false;
+  triggered=new Set();S={xe:0,pk:0,ms:0,dist:0,items:0};xenoSt={};
+  jActive=false;jOpts=[];jCount=0;lastXenoSpk=0;lastNavSpk=0;
+  inv={bengala:{icon:'🔦',name:'Bengala',count:2},adrenalina:{icon:'💉',name:'Adrenalina',count:1},inhibidor:{icon:'📡',name:'Inhibidor',count:1},silencio:{icon:'🔇',name:'Silencio',count:1},botiquin:{icon:'🩹',name:'Botiquín',count:1}};
+  effects={};
+  els=mission.elements.map(e=>({...e,config:{...e.config},triggered:false}));
+  els.filter(e=>e.type==='xeno').forEach(e=>{xenoSt[e.id]={distractedUntil:0};});
+  document.getElementById('glbl').textContent=mission.meta?.name||'—';
+  document.getElementById('trng').textContent=`RANGE: ${mission.settings?.trackerRange||45}m`;
+  updEnergy();renderInv();showScr('game');
+  startGPS();startAccel();
+  // Reattach orientation
+  if(oriH){
+    const prev=oriH;
+    oriH=e=>{prev(e);if(running)document.getElementById('ihdg').textContent=Math.round(pH)+'°';};
+    window.removeEventListener('deviceorientation',prev,true);window.removeEventListener('deviceorientationabsolute',prev,true);
+    window.addEventListener('deviceorientationabsolute',oriH,true);window.addEventListener('deviceorientation',oriH,true);
+  }
+  loops.push(setInterval(gameLoop,1000));
+  loops.push(setInterval(eLoop,10000));
+  loops.push(setInterval(tLoop,500));
+  loops.push(setInterval(xLoop,2000));
+  loops.push(setInterval(navLoop,20000));
+  setTimeout(()=>{speak('Misión iniciada. Motion tracker activo. Bishop en línea.');setTimeout(navLoop,3500);},900);
+}
+
+// ═══════════════════════════
+// GPS
+// ═══════════════════════════
+function startGPS(){
+  if(!navigator.geolocation){fallbackPos();return;}
+  gpsW=navigator.geolocation.watchPosition(
+    pos=>{const{latitude:la,longitude:lo,speed:sp}=pos.coords;if(lastPos)S.dist+=hav(lastPos.la,lastPos.lo,la,lo);lastPos={la,lo};pLat=la;pLng=lo;pSpd=sp||0;document.getElementById('ispd').textContent=pSpd.toFixed(1);setSt('📡','Señal GPS activa');},
+    ()=>{setSt('⚠️','GPS débil');fallbackPos();},
+    {enableHighAccuracy:true,maximumAge:2000,timeout:10000}
+  );
+}
+function fallbackPos(){const s=els.find(e=>e.type==='start');if(s){pLat=s.lat;pLng=s.lng;}}
+
+// ═══════════════════════════
+// ACCELEROMETER — SALTOS
+// ═══════════════════════════
+let lastAY=0,jCool=false;
+function startAccel(){
+  function onM(e){
+    if(!running||paused)return;
+    const a=e.accelerationIncludingGravity||e.acceleration; if(!a)return;
+    const ay=a.y||0,delta=Math.abs(ay-lastAY); lastAY=ay;
+    if(delta>18&&!jCool){jCool=true;onJump();setTimeout(()=>jCool=false,600);}
+  }
+  if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){DeviceMotionEvent.requestPermission().then(r=>{if(r==='granted')window.addEventListener('devicemotion',onM);});}
+  else window.addEventListener('devicemotion',onM);
+}
+
+function onJump(){
+  if(!jActive)return;
+  jCount++;renderJDots();
+  clearTimeout(jTO);
+  jTO=setTimeout(()=>resolveJump(jCount),1200);
+}
+
+function resolveJump(n){
+  if(!jActive||!jOpts.length)return;
+  const k=jOpts[n-1];
+  if(k)useItem(k);
+  dismissJP();
+}
+
+// ═══════════════════════════
+// LOOPS
+// ═══════════════════════════
+function gameLoop(){
+  if(!running||paused)return;
+  const e=Math.floor((Date.now()-startTime)/1000);
+  document.getElementById('gtimer').textContent=`${Math.floor(e/60).toString().padStart(2,'0')}:${(e%60).toString().padStart(2,'0')}`;
+  if(mission.settings?.failOnTime&&e>=(mission.settings.timeLimit||60)*60){endMission(false,'tiempo');return;}
+  els.forEach(el=>checkTrig(el));
+  updObjUI();
+}
+
+function tLoop(){
+  if(!running||paused||!pLat)return;
+  const range=mission.settings?.trackerRange||45;
+  const scr=document.getElementById('tscreen');
+  scr.querySelectorAll('.blip:not(.player)').forEach(b=>b.remove());
+  let nd=null;
+  els.forEach(el=>{
+    if(el.type==='start')return;
+    const d=hav(pLat,pLng,el.lat,el.lng);
+    if(d>range)return;
+    if(nd===null||d<nd)nd=d;
+    const br=bear(pLat,pLng,el.lat,el.lng),rel=normA(br-pH);
+    const ra=rel*Math.PI/180,r=(d/range)*44;
+    const cx=50+Math.sin(ra)*r,cy=50-Math.cos(ra)*r;
+    const b=document.createElement('div');
+    const cls={xeno:'xeno',waypoint:'wp',extraction:'wp',energy:'sup',message:'wp'}[el.type]||'wp';
+    b.className=`blip ${cls}`; b.style.left=cx+'%'; b.style.top=cy+'%';
+    scr.appendChild(b);
+  });
+  setTracker(nd,range);
+  const ne=document.getElementById('nearest');
+  if(nd!==null){ne.textContent=`CONTACTO — ${Math.round(nd)}m`;ne.style.color=nd<15?'var(--red)':'var(--amber)';}
+  else ne.textContent='';
+}
+
+function xLoop(){
+  if(!running||paused||!pLat)return;
+  const now=Date.now(),range=mission.settings?.trackerRange||45;
+  const isSilent=effects.silencio&&effects.silencio>now;
+  const isInhib=effects.inhibidor&&effects.inhibidor>now;
+  let inRange=[];
+  els.filter(e=>e.type==='xeno').forEach(xen=>{
+    const d=hav(pLat,pLng,xen.lat,xen.lng);
+    const st=xenoSt[xen.id]||{};
+    if(d>range*1.5||( st.distractedUntil&&st.distractedUntil>now))return;
+    const cfg=xen.config;
+    const hR=isSilent?cfg.detectionHear*.3:cfg.detectionHear;
+    const effH=pSpd>2.5?hR*1.4:hR;
+    if(d<effH||d<cfg.detectionSee){
+      inRange.push({xen,d});
+      if(!isInhib){const br=bear(pLat,pLng,xen.lat,xen.lng);xeno3D(normA(br-pH),d);}
+      const al=document.getElementById('xalert');al.classList.add('show');setTimeout(()=>al.classList.remove('show'),400);
+      if(d<5&&mission.settings?.failOnXeno){endMission(false,'xenomorfo');return;}
+      S.xe++;
+    }
+  });
+  if(inRange.length>0&&now-lastXenoSpk>15000&&!jActive){
+    lastXenoSpk=now;
+    const cl=inRange.sort((a,b)=>a.d-b.d)[0];
+    announceXeno(cl.xen,cl.d);
+  }
+}
+
+function eLoop(){
+  if(!running||paused)return;
+  const now=Date.now(),isRun=pSpd>2.5,hasAdr=effects.adrenalina&&effects.adrenalina>now;
+  let drain=(mission.settings?.drainPerMin||0)/6;
+  if(isRun&&!hasAdr)drain+=(mission.settings?.drainRunExtra||0)/6;
+  energy=Math.max(0,energy-drain);updEnergy();
+  if(energy<=0&&mission.settings?.failOnEnergy){endMission(false,'energia');return;}
+  if(energy<=20&&Math.random()<.4)speak('Energía crítica. Necesito un botiquín.');
+}
+
+function navLoop(){
+  if(!running||paused||!pLat)return;
+  const now=Date.now();
+  if(now-lastNavSpk<18000)return;
+  lastNavSpk=now;
+  const nWP=els.filter(e=>e.type==='waypoint'&&!triggered.has(e.id)).sort((a,b)=>(a.config?.order||0)-(b.config?.order||0))[0];
+  const ext=els.find(e=>e.type==='extraction');
+  const tgt=nWP||ext; if(!tgt)return;
+  const d=Math.round(hav(pLat,pLng,tgt.lat,tgt.lng));
+  const br=bear(pLat,pLng,tgt.lat,tgt.lng);
+  const rel=normA(br-pH);
+  const dir=relDir(rel),card=cardDir(br);
+  const lbl=nWP?`Waypoint ${nWP.config?.order||''}`:(tgt.label||'extracción');
+  let msg=d>200?`${lbl} a ${d} metros. Dirección ${card}. ${dir}.`:d>50?`Objetivo a ${d} metros. ${dir}.`:`Objetivo muy cerca. ${d} metros. ${dir}.`;
+  if(d<=50)ping(false);
+  speak(msg);
+}
+
+// ═══════════════════════════
+// XENO ANNOUNCE + JUMP PROMPT
+// ═══════════════════════════
+function announceXeno(xen,dist){
+  const tp=xen.config.xenoType||'xenomorfo';
+  const tips={merodeador:'Quédate quieto y te perderá.',acechador:'Usa una bengala o cambia de dirección.',emboscador:'Corre. No hay tiempo para sigilo.',rastreador:'Necesitas el inhibidor.',centinela:'Rodéalo. No entres en su radio.'};
+  const avail=Object.entries(inv).filter(([k,v])=>v.count>0).slice(0,3);
+  let msg=`${tp} detectado a ${Math.round(dist)} metros. ${tips[tp]||''}`;
+  if(avail.length){
+    msg+=` Opciones: ${avail.map(([k,v],i)=>`${i+1} salto: ${v.name}`).join('. ')}.`;
+    showJP(avail.map(([k])=>k),`${tp.toUpperCase()} A ${Math.round(dist)}m`,avail.map(([k,v])=>`${v.icon} ${v.name}`));
+  }
+  speak(msg);
+}
+
+function showJP(keys,title,labels){
+  jOpts=keys;jCount=0;jActive=true;
+  document.getElementById('jttl').textContent=`⚡ ${title}`;
+  document.getElementById('jtxt').innerHTML=labels.map((l,i)=>`<b>${i+1} salto${i>0?'s':''}</b>: ${l}`).join('<br>');
+  renderJDots();
+  document.getElementById('jprompt').classList.add('show');
+  clearTimeout(jTO);jTO=setTimeout(dismissJP,20000);
+}
+
+function renderJDots(){
+  document.getElementById('jdots').innerHTML=jOpts.map((_,i)=>`<div class="jdot ${i<jCount?'on':''}"></div>`).join('');
+}
+
+function dismissJP(){jActive=false;jCount=0;jOpts=[];document.getElementById('jprompt').classList.remove('show');}
+
+// ═══════════════════════════
+// USE ITEM
+// ═══════════════════════════
+function useItem(key){
+  const it=inv[key]; if(!it||it.count<=0)return;
+  it.count--;S.items++;const now=Date.now();
+  const msgs={bengala:'Bengala lanzada. Xenomorfos distraídos veinte segundos.',adrenalina:'Adrenalina inyectada. Sprint sin coste treinta segundos.',inhibidor:'Inhibidor activo. Sesenta segundos sin rastreo.',silencio:'Módulo silencio activo. Cuarenta y cinco segundos.',botiquin:`Botiquín usado. Energía al ${Math.round(Math.min(100,energy+40))} por ciento.`};
+  switch(key){
+    case 'bengala':els.filter(e=>e.type==='xeno').forEach(x=>{if(!xenoSt[x.id])xenoSt[x.id]={};xenoSt[x.id].distractedUntil=now+20000;});break;
+    case 'adrenalina':effects.adrenalina=now+30000;break;
+    case 'inhibidor':effects.inhibidor=now+60000;break;
+    case 'silencio':effects.silencio=now+45000;break;
+    case 'botiquin':energy=Math.min(100,energy+40);updEnergy();break;
+  }
+  speak(msgs[key]||'Ítem usado.');setSt('⚡',`${it.icon} ${it.name} activado`);renderInv();ping(true);
+}
+
+// ═══════════════════════════
+// TRIGGERS
+// ═══════════════════════════
+function checkTrig(el){
+  if(!pLat||el.type==='xeno'||triggered.has(el.id))return;
+  const d=hav(pLat,pLng,el.lat,el.lng);
+  if(d<=(el.config?.radius||15))fireEl(el);
+}
+
+function fireEl(el){
+  triggered.add(el.id);el.triggered=true;ping(el.type==='extraction'||el.type==='waypoint');
+  switch(el.type){
+    case 'extraction':setTimeout(()=>{speak(el.config?.audioMessage||'Extracción completada.');setTimeout(()=>endMission(true),2000);},500);break;
+    case 'waypoint':speak(el.config?.audioMessage||`Waypoint confirmado.`);setSt('📍',`${el.label} alcanzado`);setTimeout(navLoop,2000);break;
+    case 'energy':
+      energy=Math.min(100,energy+(el.config?.energyAmount||25));updEnergy();S.pk++;
+      const bk=Object.keys(inv)[Math.floor(Math.random()*Object.keys(inv).length)];
+      inv[bk].count++;renderInv();
+      speak(`${el.config?.audioMessage||'Suministros recogidos.'} ${inv[bk].name} añadido.`);
+      setSt('⚡',`+${el.config?.energyAmount||25}% + ${inv[bk].name}`);break;
+    case 'message':S.ms++;setTimeout(()=>{speak(el.config?.audioMessage||'');setSt('📻','Transmisión recibida');},(el.config?.delaySeconds||0)*1000);break;
+  }
+}
+
+// ═══════════════════════════
+// OBJ UI
+// ═══════════════════════════
+function updObjUI(){
+  const nWP=els.filter(e=>e.type==='waypoint'&&!triggered.has(e.id)).sort((a,b)=>(a.config?.order||0)-(b.config?.order||0))[0];
+  const ext=els.find(e=>e.type==='extraction');
+  const tgt=nWP||ext;
+  if(!tgt||!pLat){document.getElementById('iobj').textContent='—';return;}
+  const d=Math.round(hav(pLat,pLng,tgt.lat,tgt.lng));
+  document.getElementById('iobj').textContent=d+'m';
+  const br=bear(pLat,pLng,tgt.lat,tgt.lng),rel=normA(br-pH);
+  setSt('🧭',`${tgt.label||'Objetivo'}: ${d}m — ${relDir(rel)} (${cardDir(br)})`);
+}
+
+function relDir(r){const a=Math.abs(r);if(a<20)return'sigue recto';if(a<60)return r>0?'gira derecha':'gira izquierda';if(a<120)return r>0?'a tu derecha':'a tu izquierda';if(a<160)return r>0?'atrás derecha':'atrás izquierda';return'da media vuelta';}
+function cardDir(b){return['Norte','Noreste','Este','Sureste','Sur','Suroeste','Oeste','Noroeste'][Math.round(b/45)%8];}
+
+// ═══════════════════════════
+// ENERGY UI
+// ═══════════════════════════
+function updEnergy(){
+  const p=Math.round(energy);
+  document.getElementById('ebar').style.width=p+'%';document.getElementById('ebarv').textContent=p+'%';
+  document.getElementById('ebar').classList.toggle('low',p<=25);document.getElementById('ebarv').classList.toggle('low',p<=25);
+}
+
+function renderInv(){
+  document.getElementById('ibar').innerHTML=Object.entries(inv).map(([k,v])=>`<div class="ichip ${v.count>0?'on':''}">${v.icon}<span class="icnt">${v.count}</span></div>`).join('');
+}
+
+// ═══════════════════════════
+// PAUSE / END
+// ═══════════════════════════
+function pauseGame(){paused=true;SY.cancel();document.getElementById('screen-pause').classList.add('active');}
+function resumeGame(){paused=false;document.getElementById('screen-pause').classList.remove('active');speak('Misión reanudada.');}
+function abortMission(){document.getElementById('screen-pause').classList.remove('active');endMission(false,'abandonada');}
+
+function endMission(ok,reason=''){
+  running=false;stopGame();
+  const e=Math.floor((Date.now()-startTime)/1000);
+  const m=Math.floor(e/60).toString().padStart(2,'0'),s=(e%60).toString().padStart(2,'0');
+  const msgs={success:'EXTRACCIÓN COMPLETADA',xenomorfo:'CONTACTO FATAL',energia:'SIN ENERGÍA',tiempo:'TIEMPO AGOTADO',abandonada:'MISIÓN ABANDONADA'};
+  document.getElementById('eicon').textContent=ok?'🏁':'💀';
+  const t=document.getElementById('etitle');
+  t.textContent=ok?msgs.success:(msgs[reason]||'MISIÓN FALLIDA');
+  t.className='etitle '+(ok?'ok':'fail');
+  document.getElementById('estats').innerHTML=`<div class="esr"><span class="l">Tiempo</span><span>${m}:${s}</span></div><div class="esr"><span class="l">Distancia</span><span>${Math.round(S.dist)}m</span></div><div class="esr"><span class="l">Energía final</span><span>${Math.round(energy)}%</span></div><div class="esr"><span class="l">Eventos xeno</span><span>${S.xe}</span></div><div class="esr"><span class="l">Suministros</span><span>${S.pk}</span></div><div class="esr"><span class="l">Ítems usados</span><span>${S.items}</span></div>`;
+  showScr('end');
+  setTimeout(()=>speak(ok?'Extracción completada. Bien hecho, marine.':`Misión fallida. Causa: ${reason}.`),600);
+}
+
+function stopGame(){
+  running=false;loops.forEach(clearInterval);loops=[];
+  if(tPingIv){clearInterval(tPingIv);tPingIv=null;}
+  if(gpsW)navigator.geolocation.clearWatch(gpsW);
+  SY.cancel();
+}
+
+// ═══════════════════════════
+// STATUS
+// ═══════════════════════════
+function setSt(icon,txt){document.getElementById('sicon').textContent=icon;document.getElementById('stxt').textContent=txt;}
+
+// ═══════════════════════════
+// GEO MATH
+// ═══════════════════════════
+function hav(a,b,c,d){const R=6371000,dA=(c-a)*Math.PI/180,dB=(d-b)*Math.PI/180,x=Math.sin(dA/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dB/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
+function bear(a,b,c,d){const dL=(d-b)*Math.PI/180,y=Math.sin(dL)*Math.cos(c*Math.PI/180),x=Math.cos(a*Math.PI/180)*Math.sin(c*Math.PI/180)-Math.sin(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.cos(dL);return(Math.atan2(y,x)*180/Math.PI+360)%360;}
+function normA(a){return((a+540)%360)-180;}
+
+selectMode('auto');
+</script>
+</body>
+</html>
